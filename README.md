@@ -7,8 +7,9 @@ Gym-type API:
 
 Small environs:
 
-- P matrix
+- P transition matrix
 - $ \mu$ stationary distribution
+- R reward matrix
 - $ V^*$ optimal value 
 
 Large environs:

@@ -1,5 +1,5 @@
 import numpy as np 
-
+from copy import deepcopy
 
 def step(V, env, alpha):
 
@@ -9,16 +9,16 @@ def step(V, env, alpha):
     delta = r + env.gamma * V.evaluate(s_prime) - V.evaluate(s)
 
     grads = V.gradient(s)
-
+    
     for i in range(len(V.theta)):
-        V.theta[i]  = V.theta[i] + alpha * grads[i] * delta
+        V.theta[i] = V.theta[i] + alpha * grads[i] * delta
 
-    return V.theta, r, s
+    return deepcopy(V.theta), r, s
 
 
 def TD0(V, env, alpha, steps):
 
-    thetas, rewards, states = [],[],[]
+    Vs, thetas, rewards, states = [], [],[],[]
 
     env.reset()
 
@@ -30,5 +30,7 @@ def TD0(V, env, alpha, steps):
         rewards.append(r)
         states.append(s)
 
+        Vs.append(V.full_evaluate())
 
-    return thetas, rewards, states
+
+    return Vs, thetas, rewards, states
