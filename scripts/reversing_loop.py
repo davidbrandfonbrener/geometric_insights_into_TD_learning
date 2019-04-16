@@ -5,6 +5,8 @@ from td.algs import expected_td0, online_td0
 import numpy as np
 from matplotlib import pyplot as plt
 
+import argparse
+
 
 def reversing_loop(n, k, delta):
     # initialize a deterministic cycle
@@ -50,99 +52,113 @@ def dist_mu(env, Vs):
     return out
 
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--n', default=30)
+    parser.add_argument('--k', default=10)
+    parser.add_argument('--delta', default=0.5)
+    parser.add_argument('--width', default=5)
+    parser.add_argument('--offline', default=True)
+    parser.add_argument('--steps', default=10000)
+    parser.add_argument('--stepsize', default=0.05)
+    parser.add_argument('--plot_start', default=100) 
+    parser.add_argument('--plot_step', default=100)
+    parser.add_argument('--gamma', default=0.9)
+    parser.add_argument('--seed', default=1)
+    parser.add_argument('--save_path', default="../outputs/plots/loop_30/")
 
-n = 30
-k = 10
-delta = 0.5
-features = 2
-width = 5
-
-offline = True
-
-# integration
-steps = 10000
-stepsize = 0.01
-#plotting
-plot_start = 1000
-plot_step = 100
-
-P, mu = reversing_loop(n, k, delta)
-gamma = 0.9
-
-R_mat = np.zeros_like(P)
-R_mat[-1, -2] = 1
-
-#Phi = np.concatenate([np.random.rand(n,features) - 0.5, np.ones((n,1))], axis = 1)
-#Phi = np.concatenate([-np.expand_dims(np.arange(0,n), 1)/(1.0*n) + 0.5, np.expand_dims(np.arange(0,n), 1)/(1.0*n) - 0.5, np.ones((n,1))], axis = 1)  
-angles = np.linspace(0, 2 * np.pi, n, endpoint=False)
-Phi = np.concatenate([np.expand_dims(np.sin(angles), 1), np.expand_dims(np.cos(angles), 1), np.ones((n,1))], axis = 1) 
-print(Phi)
-
-
-env = environment.MRP(gamma, P, mu, R_mat)
-print(env.V_star)
-
-np.random.seed(1)
+    args = parser.parse_args()
+    return args
 
 
 
-if offline: 
+def main():
+    args = parse_args()
 
-    V = function.Tabular(np.zeros(n))
-    thetas, Vs = expected_td0.TD0(V, env, stepsize, steps)
-
-    Vs = np.array(Vs)
-    plt.plot(dist_mu(env, Vs[plot_start::plot_step]), color = 'b')
-
-
-    V = function.Linear(np.zeros(features + 1), Phi)
-    thetas, Vs = expected_td0.TD0(V, env, stepsize, steps)
-    print(Vs[-1])
-    print(thetas[-1])
-
-    Vs = np.array(Vs)
-    plt.plot(dist_mu(env, Vs[plot_start::plot_step]), color = 'r')
+    for k in [2, 5, 10, 15, 20, 25, 30]:
+        args.k = k
+        run_experiment(args)
 
 
-    V = function.TwoLayerNetNoBias(Phi, width)
-    thetas, Vs = expected_td0.TD0(V, env, stepsize, steps)
-    print(Vs[-1])
-    print(np.dot(thetas[-1][1], thetas[-1][0]))
+def run_experiment(args):
 
-    Vs = np.array(Vs)
-    plt.plot(dist_mu(env, Vs[plot_start::plot_step]), color = 'orange')
+    P, mu = reversing_loop(args.n, args.k, args.delta)
 
-    plt.show()
-
-else:
-
-    V = function.Tabular(np.zeros(n))
-    Vs, thetas, rs, ss = online_td0.TD0(V, env, stepsize, steps)
-
-    Vs = np.array(Vs)
-    plt.plot(dist_mu(env, Vs[plot_start::plot_step]), color = 'b')
-
-
-    Phi = np.concatenate([np.random.rand(n,features) - 0.5, np.ones((n,1))], axis = 1) 
+    R_mat = np.zeros_like(P)
+    R_mat[-1, -2] = 1
+    
+    angles = np.linspace(0, 2 * np.pi, args.n, endpoint=False)
+    Phi = np.concatenate([np.expand_dims(np.sin(angles), 1), np.expand_dims(np.cos(angles), 1), np.ones((args.n,1))], axis = 1) 
     print(Phi)
 
-    V = function.Linear(np.zeros(features + 1), Phi)
-    Vs, thetas, rs, ss = online_td0.TD0(V, env, stepsize, steps)
-    print(Vs[-1])
-    print(thetas[-1])
 
-    Vs = np.array(Vs)
-    plt.plot(dist_mu(env, Vs[plot_start::plot_step]), color = 'r')
+    env = environment.MRP(args.gamma, P, mu, R_mat)
+    print(env.V_star)
+
+    np.random.seed(args.seed)
+
+    if args.offline: 
+
+        V = function.Tabular(np.zeros(args.n))
+        thetas, Vs = expected_td0.TD0(V, env, args.stepsize, args.steps)
+
+        Vs = np.array(Vs)
+        plt.plot(dist_mu(env, Vs[args.plot_start::args.plot_step]), color = 'b')
 
 
-    V = function.TwoLayerNetNoBias(Phi, width)
-    Vs, thetas, rs, ss = online_td0.TD0(V, env, stepsize, steps)
-    print(Vs[-1])
-    print(np.dot(thetas[-1][1], thetas[-1][0]))
+        V = function.Linear(np.zeros(Phi.shape[1]), Phi)
+        thetas, Vs = expected_td0.TD0(V, env, args.stepsize, args.steps)
+        print(Vs[-1])
+        print(thetas[-1])
+
+        Vs = np.array(Vs)
+        plt.plot(dist_mu(env, Vs[args.plot_start::args.plot_step]), color = 'r')
 
 
-    Vs = np.array(Vs)
-    plt.plot(dist_mu(env, Vs[plot_start::plot_step]), color = 'orange')
+        V = function.TwoLayerNetNoBias(Phi, args.width)
+        thetas, Vs = expected_td0.TD0(V, env, args.stepsize, args.steps)
+        print(Vs[-1])
+        print(np.dot(thetas[-1][1], thetas[-1][0]))
 
-    plt.show()
+        Vs = np.array(Vs)
+        plt.plot(dist_mu(env, Vs[args.plot_start::args.plot_step]), color = 'orange')
 
+
+    else:
+
+        V = function.Tabular(np.zeros(args.n))
+        Vs, thetas, rs, ss = online_td0.TD0(V, env, args.stepsize, args.steps)
+
+        Vs = np.array(Vs)
+        plt.plot(dist_mu(env, Vs[args.plot_start::args.plot_step]), color = 'b')
+
+        V = function.Linear(Phi.shape[1], Phi)
+        Vs, thetas, rs, ss = online_td0.TD0(V, env, args.stepsize, args.steps)
+        print(Vs[-1])
+
+        Vs = np.array(Vs)
+        plt.plot(dist_mu(env, Vs[args.plot_start::args.plot_step]), color = 'r')
+
+
+        V = function.TwoLayerNetNoBias(Phi, args.width)
+        Vs, thetas, rs, ss = online_td0.TD0(V, env, args.stepsize, args.steps)
+        print(Vs[-1])
+
+        Vs = np.array(Vs)
+        plt.plot(dist_mu(env, Vs[args.plot_start::args.plot_step]), color = 'orange')
+
+    
+    plt.xlabel("Training epochs")
+    plt.ylabel("Distance to V*")
+    plt.title("n = "+str(args.n)+", k = "+str(args.k))
+
+    plt.savefig(args.save_path + "k_" + str(args.k))
+    
+    plt.close()
+
+    #plt.show()
+
+
+
+if __name__ == "__main__":
+    main()
