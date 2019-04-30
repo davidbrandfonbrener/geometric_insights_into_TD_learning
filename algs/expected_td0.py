@@ -11,7 +11,7 @@ def step(V, env, alpha):
     return deepcopy(V.theta)
 
 
-def TD0(V, env, alpha, steps):
+def TD0(V, env, alpha, steps, log_idx):
 
     thetas, Vs = [], []
 
@@ -22,5 +22,8 @@ def TD0(V, env, alpha, steps):
         thetas.append(theta)
 
         Vs.append(V.full_evaluate())
+
+        if i % log_idx == 0:
+            print("error: ", np.linalg.norm(Vs[-1] - env.V_star))
 
     return thetas, Vs
