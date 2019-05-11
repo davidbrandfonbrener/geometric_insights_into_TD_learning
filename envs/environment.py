@@ -14,12 +14,11 @@ class Environment(object):
 
 class MRP(Environment):
 
-    def __init__(self, gamma = 1.0, P = None, R_mat = None):
+    def __init__(self, gamma = 1.0, P = None, R_mat = None, V_star = None):
         
         self.gamma = gamma
 
         self.P = P 
-        self.R_mat = R_mat
 
         self.state = None
 
@@ -30,9 +29,24 @@ class MRP(Environment):
         assert np.sum(self.mu) - 1 < 1e-8
 
         self.A = np.dot(np.diag(self.mu), np.diag(np.ones_like(self.mu)) - self.gamma * self.P)
-        self.R = np.sum(self.R_mat * self.P, axis=1)
-        self.V_star = np.dot(np.linalg.inv( np.diag(np.ones_like(self.mu)) - self.gamma * self.P), self.R)
+        
+        # determine reward and optimal value function
+        if R_mat is not None:
+            self.R_mat = R_mat
+            self.R = np.sum(self.R_mat * self.P, axis=1)
+            self.V_star = np.dot(np.linalg.inv( np.diag(np.ones_like(self.mu)) - self.gamma * self.P), self.R)
+        else:
+            self.V_star = V_star
+            self.R = np.dot(np.diag(np.ones_like(self.mu)) - self.gamma * self.P, self.V_star)
+            self.R_mat = np.zeros_like(P)
+            for i in range(self.R_mat.shape[0]):
+                for j in range(self.R_mat.shape[1]):
+                    if self.P[i,j] != 0:
+                        self.R_mat[i,j] = self.R[i] / self.P[i,j]
+                        break
+
         assert np.linalg.norm(self.V_star - self.R - self.gamma * np.dot(self.P, self.V_star)) < 1e-8
+        assert np.sum(abs(self.R - np.sum(self.R_mat * self.P, axis=1))) < 1e-8
     
     def step(self):
         s = self.state

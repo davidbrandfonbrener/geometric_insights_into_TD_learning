@@ -17,7 +17,7 @@ env = environment.MRP(gamma, P, R_mat)
 # Spiral
 V = spiral.Spiral(-7.0, P, np.array([-10, -10, 20]), 0.05)
 
-thetas, Vs = expected_td0.TD0(V, env, 0.00001, 25000)
+thetas, Vs = expected_td0.TD0(V, env, 0.00001, 25000, 10000)
 
 Vs = np.array(Vs)
 fig = plt.figure()
@@ -29,7 +29,7 @@ ax.plot(Vs[:,0], Vs[:,1], Vs[:,2])
 #Tabular expected
 V = simple.Tabular(Vs[0,:])
 
-thetas, Vs = expected_td0.TD0(V, env, 0.1, 1000)
+thetas, Vs = expected_td0.TD0(V, env, 0.1, 1000, 1000)
 
 Vs = np.array(Vs)
 
@@ -37,13 +37,13 @@ ax.plot(Vs[:,0], Vs[:,1], Vs[:,2])
 
 
 # Affine expected
-V = simple.Affine(np.zeros(2), np.random.random((3,2)), Vs[0,:])
+# V = simple.Affine(np.zeros(2), np.random.random((3,2)), Vs[0,:])
 
-thetas, Vs = expected_td0.TD0(V, env, 0.1, 1000)
+# thetas, Vs = expected_td0.TD0(V, env, 0.1, 1000, 1000)
 
-Vs = np.array(Vs)
+# Vs = np.array(Vs)
 
-ax.plot(Vs[:,0], Vs[:,1], Vs[:,2])
+# ax.plot(Vs[:,0], Vs[:,1], Vs[:,2])
 
 
 # # Neural net expected
@@ -56,6 +56,8 @@ ax.plot(Vs[:,0], Vs[:,1], Vs[:,2])
 
 
 # show plot
+
+
 plt.show()
 
 

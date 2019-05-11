@@ -3,22 +3,25 @@ from copy import deepcopy
 from td.utils import utils
 
 
-def step(V, env, alpha):
+def step(V, Ak, V_star, alpha):
 
     jac = V.jacobian()
     for i in range(len(V.theta)):
-        V.theta[i] = V.theta[i] - alpha * np.dot(np.moveaxis(jac[i], 0, -1), np.dot(env.A, V.full_evaluate() - env.V_star))
+        V.theta[i] = V.theta[i] - alpha * np.dot(np.moveaxis(jac[i], 0, -1), np.dot(Ak, V.full_evaluate() - V_star))
             
     return deepcopy(V.theta)
 
 
-def TD0(V, env, alpha, steps, log_idx):
+def TDk(k, V, env, alpha, steps, log_idx):
 
     thetas, Vs = [], []
 
+    V_star = env.V_star
+    Ak = np.dot(np.diag(env.mu), np.diag(np.ones_like(env.mu)) - env.gamma * np.linalg.matrix_power(env.P, k))
+
     for i in range(steps):
 
-        theta = step(V, env, alpha)
+        theta = step(V, Ak, V_star, alpha)
         
         thetas.append(theta)
 

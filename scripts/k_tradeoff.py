@@ -14,7 +14,7 @@ import jax.numpy as jnp
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--n', default=10)
-    parser.add_argument('--k', default=1)
+    parser.add_argument('--delta', default=0.3)
     parser.add_argument('--width', default=10)
     parser.add_argument('--depth', default = 2)
     parser.add_argument('--log_idx', default=1000)
@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument('--plot_step', default=100)
     parser.add_argument('--gamma', default=0.9)
     parser.add_argument('--seed', default=1)
-    parser.add_argument('--save_path', default="../outputs/data/sr/")
+    parser.add_argument('--save_path', default="../outputs/data/k_tradeoff/")
 
     args = parser.parse_args()
     return args
@@ -35,8 +35,8 @@ def build_P(n, delta):
     P = np.zeros((n,n))
     # add symmetric connections with prob delta
     for i in range(n):
-        P[i, i-1] = (1 - delta)
-        P[i, (i+1) % n] = delta
+        P[i, i-1] = (1 - delta /(i+1))
+        P[i, (i+1) % n] = delta / (i+1)
         P[i,i] = 0
 
     return P
@@ -53,14 +53,14 @@ def run_experiment(args):
     # R_mat[1, 0] = 1
     # env = environment.MRP(args.gamma, P, R_mat)
 
-    # V_star = -np.ones(args.n) * 0.1
+    V_star = np.zeros(args.n) 
     # V_star[1] = 0.1
-    # for i in range(0, args.n, 2):
-    #     V_star[i] = 1
-    V_star = np.linspace(0, 2, args.n)
+    for i in range(0, args.n, 2):
+        V_star[i] = 1
     env = environment.MRP(args.gamma, P, V_star=V_star)
 
-    bound = utils.overparam_cond_number_bound(env.A)
+    Ak = np.dot(np.diag(env.mu), np.diag(np.ones_like(env.mu)) - env.gamma * np.linalg.matrix_power(env.P, args.k))
+    bound = utils.overparam_cond_number_bound(Ak)
 
     
     angles = np.linspace(0, 2 * np.pi, args.n, endpoint=False)
@@ -100,12 +100,13 @@ def run_experiment(args):
 def main():
     args = parse_args()
 
-    deltas = [.1, .2, .3, .4, .45]
+    ks = [1, 3, 5, 7]
     
     t, l, m, c, b, s = [], [], [], [], [], []
-    for delta in deltas:
+    for k in ks:
 
-        args.delta = delta
+        args.k = k
+
         tabular_Vs, linear_Vs, mlp_Vs, condition_numbers, bound, smoothness = run_experiment(args)
         t.append(tabular_Vs)
         l.append(linear_Vs)
@@ -121,9 +122,9 @@ def main():
     b = np.array(b)
     s = np.array(s)
 
-    np.savez(args.save_path  + "k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
+    np.savez(args.save_path  + "n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
             + "_width_" + str(args.width) + "_seed_" + str(args.seed) + ".npz", 
-            tabular_Vs = t, linear_Vs = l, mlp_Vs = m, condition_numbers = c, bound = b, deltas = deltas, smoothness= s)
+            tabular_Vs = t, linear_Vs = l, mlp_Vs = m, condition_numbers = c, bound = b, ks = ks, smoothness= s)
 
 
 if __name__ == "__main__":
