@@ -60,36 +60,42 @@ class MRP(Environment):
 
 
 
-# class Gym(Environment):
 
-#     def __init__(self, task, policy, resolution):
+class Gym(Environment):
 
-#         self.gym_env = gym.make(task)
-#         self.policy = policy
-#         self.state = None
+    def __init__(self, task, policy = None):
 
-#     def hash(self, state):
+        self.gym_env = gym.make(task)
+        self.policy = policy
+        self.state = None
 
-#         return disc_state
-
-#     def get_obs(self, state):
-
-#         return obs
-
-#     def step(self):
-#         if self.policy is None:
-#             action = self.env.action_space.sample()
-#         else:
-#             action = self.policy(self.state)
-
-#         obs, r, done, info = self.env.step(action)
-#         self.state = self.hash(obs)
-
-#         return self.state, r, done
+        self.obs_shape = self.gym_env.observation_space.shape
+        self.obs_count = self.gym_env.observation_space.high - self.gym_env.observation_space.low + 1
 
 
-#     def reset(self):
-#         self.state = self.hash(self.env.reset())
-#         return self.state
+    def obs_to_state(self, obs):
+        
+        return disc_state
+
+
+    def state_to_obs(self, state):
+
+        return obs
+
+
+    def step(self):
+        if self.policy is None:
+            action = self.gym_env.action_space.sample()
+        else:
+            action = self.policy(self.state)
+
+        obs, r, done, info = self.gym_env.step(action)
+        self.state = self.obs_to_state(obs)
+
+        return self.state, r, done
+
+    def reset(self):
+        self.state = self.obs_to_state(self.gym_env.reset())
+        return self.state
 
 

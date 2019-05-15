@@ -13,17 +13,17 @@ import jax.numpy as jnp
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', default=10)
-    parser.add_argument('--delta', default=0.3)
-    parser.add_argument('--width', default=10)
-    parser.add_argument('--depth', default = 2)
-    parser.add_argument('--log_idx', default=1000)
-    parser.add_argument('--steps', default=4000)
+    parser.add_argument('--n', default=10, type=int)
+    parser.add_argument('--delta', default=0.5)
+    parser.add_argument('--width', default=10, type=int)
+    parser.add_argument('--depth', default = 2, type=int)
+    parser.add_argument('--log_idx', default=1000, type=int)
+    parser.add_argument('--steps', default=4000, type=int)
     parser.add_argument('--stepsize', default=0.1)
-    parser.add_argument('--plot_start', default=0) 
-    parser.add_argument('--plot_step', default=100)
+    parser.add_argument('--plot_start', default=0, type=int) 
+    parser.add_argument('--plot_step', default=100, type=int)
     parser.add_argument('--gamma', default=0.9)
-    parser.add_argument('--seed', default=1)
+    parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--save_path', default="../outputs/data/k_tradeoff/")
 
     args = parser.parse_args()
@@ -35,9 +35,9 @@ def build_P(n, delta):
     P = np.zeros((n,n))
     # add symmetric connections with prob delta
     for i in range(n):
-        P[i, i-1] = (1 - delta /(i+1))
-        P[i, (i+1) % n] = delta / (i+1)
-        P[i,i] = 0
+        P[i, i-1] = 0.5 - delta
+        P[i, (i+1) % n] = delta
+        P[i,i] = 0.5
 
     return P
 
@@ -54,14 +54,11 @@ def run_experiment(args):
     # env = environment.MRP(args.gamma, P, R_mat)
 
     V_star = np.zeros(args.n) 
-    # V_star[1] = 0.1
     for i in range(0, args.n, 2):
         V_star[i] = 1
     env = environment.MRP(args.gamma, P, V_star=V_star)
 
-    Ak = np.dot(np.diag(env.mu), np.diag(np.ones_like(env.mu)) - env.gamma * np.linalg.matrix_power(env.P, args.k))
-    bound = utils.overparam_cond_number_bound(Ak)
-
+    bound = utils.overparam_cond_number_bound(env.P, env.mu, env.gamma, args.k)
     
     angles = np.linspace(0, 2 * np.pi, args.n, endpoint=False)
     Phi = np.concatenate([np.expand_dims(np.sin(angles), 1), np.expand_dims(np.cos(angles), 1), np.ones((args.n,1))], axis = 1) 
@@ -100,7 +97,7 @@ def run_experiment(args):
 def main():
     args = parse_args()
 
-    ks = [1, 3, 5, 7]
+    ks = [1, 2, 3, 5]
     
     t, l, m, c, b, s = [], [], [], [], [], []
     for k in ks:

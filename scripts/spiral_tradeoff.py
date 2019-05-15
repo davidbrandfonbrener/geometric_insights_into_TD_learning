@@ -1,6 +1,6 @@
 from td.funcs import function
-from td.envs import environment
-from td.algs import expected_td0, expected_tdk
+from td.envs import environment, P_matrices
+from td.algs import expected_td0, expected_tdk, online_td0
 from td.funcs import mlp, simple, spiral
 from td.utils import utils
 
@@ -19,30 +19,16 @@ def parse_args():
     #parser.add_argument('--depth', default = 2)
     parser.add_argument('--log_idx', default=1000, type=int)
     parser.add_argument('--steps', default=100000, type=int)
-    parser.add_argument('--stepsize', default=0.00001)
+    parser.add_argument('--stepsize', default=0.0001)
     parser.add_argument('--plot_start', default=0, type=int) 
     parser.add_argument('--plot_step', default=100, type=int)
     parser.add_argument('--gamma', default=0.9)
     parser.add_argument('--seed', default=1, type=int)
+    parser.add_argument('--online', default=False, type=bool)
     parser.add_argument('--save_path', default="../outputs/data/spiral/")
 
     args = parser.parse_args()
     return args
-
-
-def build_P(n, delta):
-    # initialize a sticky cycle
-    P = np.zeros((n,n))
-    # add symmetric connections with prob delta
-    for i in range(n):
-        # P[i, (i+1) % n] = 1 - delta
-        # P[i,i] = delta
-
-        P[i, i-1] = 0.5 - delta
-        P[i, (i+1) % n] = delta
-        P[i,i] = 0.5
-
-    return P
 
 
 
@@ -50,7 +36,7 @@ def run_experiment(args):
 
     np.random.seed(args.seed)
 
-    P = build_P(args.n, args.delta)
+    P = P_matrices.build_cyclic_P(args.n, args.delta)
 
     R_mat = np.zeros_like(P)
     env = environment.MRP(args.gamma, P, R_mat)
@@ -58,11 +44,16 @@ def run_experiment(args):
     bound = utils.overparam_cond_number_bound(env.P, env.mu, env.gamma, args.k)
     
 
-    orientation = np.array([-10, -10, 20])
+    orientation = -1 * np.ones(args.n)
+    orientation[-1] = args.n - 1
     init_conditions = -20.0 
     epsilon = 0.05
-    V = spiral.Spiral(init_conditions, P, orientation, epsilon)
-    thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
+    P_spir= P_matrices.build_cyclic_P(args.n, 0.5)
+    V = spiral.Spiral(init_conditions, P_spir, orientation, epsilon)
+    if args.online:
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+    else:
+        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
     spiral_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
 
     ts = thetas[args.plot_start::args.plot_step]
@@ -72,7 +63,10 @@ def run_experiment(args):
         condition_numbers.append(utils.jac_cond(V.jacobian()))
 
     V = simple.Tabular(Vs[0])
-    thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
+    if args.online:
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+    else:
+        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
     tabular_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
     
 
@@ -88,6 +82,7 @@ def run_experiment(args):
 
 def main():
     args = parse_args()
+    print(args.online)
 
     deltas = [.5, .4, .3, .27]
     

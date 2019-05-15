@@ -49,7 +49,6 @@ def overparam_cond_number_bound(P, mu, gamma, k):
     return np.sqrt(b + ba)
 
 
-
 def overparam_mu_cond_number_bound(P, mu, gamma):
 
     Dmu = np.diag(mu)
@@ -64,6 +63,13 @@ def overparam_mu_cond_number_bound(P, mu, gamma):
     db = 1 / max(np.linalg.eig(CB)[0])
 
     return np.sqrt(d + db)
+
+
+def compute_homogeneous_bound(P, mu, V_star, gamma):
+
+    R = np.dot(np.diag(np.ones_like(mu)) - gamma * P, V_star)
+
+    return np.sqrt(np.dot(R, np.dot(np.diag(mu), R))) / (1.0 - gamma)
 
 
 

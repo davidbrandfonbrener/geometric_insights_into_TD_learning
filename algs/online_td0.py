@@ -1,5 +1,6 @@
 import numpy as np 
 from copy import deepcopy
+from td.utils import utils
 
 def step(V, env, alpha):
 
@@ -16,7 +17,7 @@ def step(V, env, alpha):
     return deepcopy(V.theta), r, s
 
 
-def TD0(V, env, alpha, steps):
+def TD0(V, env, alpha, steps, log_idx):
 
     Vs, thetas, rewards, states = [], [],[],[]
 
@@ -31,6 +32,9 @@ def TD0(V, env, alpha, steps):
         states.append(s)
 
         Vs.append(V.full_evaluate())
+
+        if i % log_idx == 0:
+            print("step: ", i, ", error: ", utils.dist_mu(env, np.expand_dims(Vs[-1], 0)))
 
 
     return Vs, thetas, rewards, states
