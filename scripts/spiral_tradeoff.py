@@ -1,6 +1,6 @@
 from td.funcs import function
 from td.envs import environment, P_matrices
-from td.algs import expected_td0, expected_tdk, online_td0
+from td.algs import expected_td0, expected_tdk, online_td0, numpy_expected_tdk
 from td.funcs import mlp, simple, spiral
 from td.utils import utils
 
@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 
 import argparse
 
-import jax.numpy as jnp
+#import jax.numpy as jnp
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -19,7 +19,7 @@ def parse_args():
     #parser.add_argument('--depth', default = 2)
     parser.add_argument('--log_idx', default=1000, type=int)
     parser.add_argument('--steps', default=100000, type=int)
-    parser.add_argument('--stepsize', default=0.0001)
+    parser.add_argument('--stepsize', default=0.000005)
     parser.add_argument('--plot_start', default=0, type=int) 
     parser.add_argument('--plot_step', default=100, type=int)
     parser.add_argument('--gamma', default=0.9)
@@ -46,15 +46,17 @@ def run_experiment(args):
 
     orientation = -1 * np.ones(args.n)
     orientation[-1] = args.n - 1
+    orientation = 10.0 * orientation
     init_conditions = -20.0 
+    print(orientation)
     epsilon = 0.05
     P_spir= P_matrices.build_cyclic_P(args.n, 0.5)
     V = spiral.Spiral(init_conditions, P_spir, orientation, epsilon)
     if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
     else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
-    spiral_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
+        thetas, Vs = numpy_expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    spiral_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
 
     ts = thetas[args.plot_start::args.plot_step]
     condition_numbers = []
@@ -64,10 +66,10 @@ def run_experiment(args):
 
     V = simple.Tabular(Vs[0])
     if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
     else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
-    tabular_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
+        thetas, Vs = numpy_expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    tabular_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
     
 
     smoothness = max([abs(env.V_star[i] - env.V_star[i-1]) for i in range(args.n)])

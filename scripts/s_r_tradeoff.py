@@ -13,18 +13,20 @@ import jax.numpy as jnp
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--n', default=10, type=int)
+    parser.add_argument('--n', default=20, type=int)
     parser.add_argument('--k', default=1, type=int)
-    parser.add_argument('--width', default=10, type=int)
-    parser.add_argument('--depth', default = 2, type=int)
+    parser.add_argument('--width', default=20, type=int)
+    parser.add_argument('--depth', default = 1, type=int)
     parser.add_argument('--log_idx', default=1000, type=int)
-    parser.add_argument('--steps', default=4000, type=int)
+    parser.add_argument('--steps', default=10000, type=int)
     parser.add_argument('--stepsize', default=0.1, type=float)
+    parser.add_argument('--delta', default=0.5, type=float)
     parser.add_argument('--plot_start', default=0, type=int)
     parser.add_argument('--plot_step', default=100, type=int)
     parser.add_argument('--gamma', default=0.9)
     parser.add_argument('--seed', default=1, type=int)
     parser.add_argument('--online', default=False, type=bool)
+    parser.add_argument('--hard', default=False, type=bool)
     parser.add_argument('--save_path', default="../outputs/data/sr/")
 
     args = parser.parse_args()
@@ -37,15 +39,16 @@ def run_experiment(args):
 
     P = P_matrices.build_cyclic_P(args.n, args.delta)
 
-    # R_mat = np.zeros_like(P)
-    # R_mat[1, 0] = 1
-    # env = environment.MRP(args.gamma, P, R_mat)
-
-    V_star = np.zeros(args.n)
-    for i in range(0, args.n, 2):
-        V_star[i] = 1
-    #V_star = np.linspace(0, 2, args.n)
-    env = environment.MRP(args.gamma, P, V_star=V_star)
+    if args.hard:
+        V_star = np.zeros(args.n)
+        for i in range(0, args.n, 2):
+            V_star[i] = 1
+        env = environment.MRP(args.gamma, P, V_star=V_star)
+    else:
+        R_mat = np.zeros_like(P)
+        R_mat[0, 1] = 1
+        env = environment.MRP(args.gamma, P, R_mat)
+    
 
     bound = utils.overparam_cond_number_bound(env.P, env.mu, env.gamma, args.k)
 
@@ -56,18 +59,18 @@ def run_experiment(args):
 
     V = simple.Tabular(np.zeros(args.n))
     if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
     else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
-    tabular_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
+        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    tabular_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
 
 
     V = mlp.MLP(Phi, [args.width]*args.depth, biases = False)
     if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
     else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
-    mlp_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
+        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    mlp_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
 
     ts = thetas[args.plot_start::args.plot_step]
     condition_numbers = []
@@ -78,10 +81,10 @@ def run_experiment(args):
 
     V = simple.Linear(np.zeros(Phi.shape[1]), Phi)
     if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx)
+        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
     else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx)
-    linear_Vs = utils.dist_mu(env, np.array(Vs)[args.plot_start::args.plot_step])
+        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    linear_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
 
     smoothness = max([abs(env.V_star[i] - env.V_star[i-1]) for i in range(args.n)])
 
@@ -97,12 +100,13 @@ def main():
     args = parse_args()
     print(args.online)
 
-    deltas = [.5, .4, .3, .27]
+    #deltas = [.5, .4, .3, .27]
+    seeds = range(10)
     
     t, l, m, c, b, s = [], [], [], [], [], []
-    for delta in deltas:
+    for seed in seeds:
 
-        args.delta = delta
+        args.seed = seed
         tabular_Vs, linear_Vs, mlp_Vs, condition_numbers, bound, smoothness = run_experiment(args)
         t.append(tabular_Vs)
         l.append(linear_Vs)
@@ -118,9 +122,9 @@ def main():
     b = np.array(b)
     s = np.array(s)
 
-    np.savez(args.save_path  + "k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
-            + "_width_" + str(args.width) + "_seed_" + str(args.seed) + "_online_" + str(args.online) + ".npz", 
-            tabular_Vs = t, linear_Vs = l, mlp_Vs = m, condition_numbers = c, bound = b, deltas = deltas, smoothness= s)
+    np.savez(args.save_path  + "hard_" + str(args.hard) + "_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
+            + "_width_" + str(args.width) + "_delta_" + str(args.delta) + "_online_" + str(args.online) + ".npz", 
+            tabular_Vs = t, linear_Vs = l, mlp_Vs = m, condition_numbers = c, bound = b, seeds = seeds, smoothness= s)
 
 
 if __name__ == "__main__":

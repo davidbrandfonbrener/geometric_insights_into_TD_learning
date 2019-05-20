@@ -17,7 +17,7 @@ def step(V, env, alpha):
     return deepcopy(V.theta), r, s
 
 
-def TD0(V, env, alpha, steps, log_idx):
+def TD0(V, env, alpha, steps, log_idx, plot_step):
 
     Vs, thetas, rewards, states = [], [],[],[]
 
@@ -31,10 +31,11 @@ def TD0(V, env, alpha, steps, log_idx):
         rewards.append(r)
         states.append(s)
 
-        Vs.append(V.full_evaluate())
+        if i % plot_step == 0:
+            Vs.append(V.full_evaluate())
 
         if i % log_idx == 0:
-            print("step: ", i, ", error: ", utils.dist_mu(env, np.expand_dims(Vs[-1], 0)))
+            print("step: ", i, ", error: ", utils.dist_mu(env.mu, env.V_star, np.expand_dims(Vs[-1], 0)))
 
 
     return Vs, thetas, rewards, states

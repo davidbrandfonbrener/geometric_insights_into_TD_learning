@@ -1,8 +1,6 @@
 import numpy as np 
-import jax.numpy as jnp 
 from copy import deepcopy
 from td.utils import utils
-from jax import jit
 
 
 def TDk(k, V, env, alpha, steps, log_idx, plot_step):
@@ -15,7 +13,7 @@ def TDk(k, V, env, alpha, steps, log_idx, plot_step):
         Pk = np.dot(env.P, Pk)
 
     Ak = np.dot(np.diag(env.mu), np.diag(np.ones_like(env.mu)) - env.gamma * Pk)
-    Ak = jnp.array(Ak)
+    Ak = np.array(Ak)
 
     for i in range(steps):
 
@@ -36,14 +34,9 @@ def step(V, Ak, V_star, alpha):
 
     jac = V.jacobian()
     for i in range(len(V.theta)):
-        J = jnp.array(np.moveaxis(jac[i], 0, -1))
-        # V.theta[i] = V.theta[i] - alpha * jnp.dot(jnp.moveaxis(J, 0, -1), jnp.dot(Ak, V.full_evaluate() - V_star))
-        # J = jnp.moveaxis(J, 0, -1)
+        J = np.array(np.moveaxis(jac[i], 0, -1))
+        V.theta[i] = V.theta[i] - alpha * np.dot(J, np.dot(Ak, V.full_evaluate() - V_star))
         V_eval = V.full_evaluate()
-        V.theta[i] -= quick_step(alpha, J, Ak, V_eval, V_star)
+        V.theta[i] -= alpha * np.dot(J, np.dot(Ak, V_eval - V_star))
             
     return deepcopy(V.theta)
-
-@jit
-def quick_step(alpha, J, A, V, V_star):
-    return alpha * jnp.dot(J, jnp.dot(A, V- V_star))

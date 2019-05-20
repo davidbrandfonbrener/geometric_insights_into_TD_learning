@@ -61,41 +61,41 @@ class MRP(Environment):
 
 
 
-class Gym(Environment):
+# class Gym(Environment):
 
-    def __init__(self, task, policy = None):
+#     def __init__(self, task, policy = None):
 
-        self.gym_env = gym.make(task)
-        self.policy = policy
-        self.state = None
+#         self.gym_env = gym.make(task)
+#         self.policy = policy
+#         self.state = None
 
-        self.obs_shape = self.gym_env.observation_space.shape
-        self.obs_count = self.gym_env.observation_space.high - self.gym_env.observation_space.low + 1
+#         self.obs_shape = self.gym_env.observation_space.shape
+#         self.obs_count = self.gym_env.observation_space.high - self.gym_env.observation_space.low + 1
 
 
-    def obs_to_state(self, obs):
+#     def obs_to_state(self, obs):
         
-        return disc_state
+#         return disc_state
 
 
-    def state_to_obs(self, state):
+#     def state_to_obs(self, state):
 
-        return obs
+#         return obs
 
 
-    def step(self):
-        if self.policy is None:
-            action = self.gym_env.action_space.sample()
-        else:
-            action = self.policy(self.state)
+#     def step(self):
+#         if self.policy is None:
+#             action = self.gym_env.action_space.sample()
+#         else:
+#             action = self.policy(self.state)
 
-        obs, r, done, info = self.gym_env.step(action)
-        self.state = self.obs_to_state(obs)
+#         obs, r, done, info = self.gym_env.step(action)
+#         self.state = self.obs_to_state(obs)
 
-        return self.state, r, done
+#         return self.state, r, done
 
-    def reset(self):
-        self.state = self.obs_to_state(self.gym_env.reset())
-        return self.state
+#     def reset(self):
+#         self.state = self.obs_to_state(self.gym_env.reset())
+#         return self.state
 
 

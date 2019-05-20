@@ -8,14 +8,16 @@ from jax import grad, jit, jacrev, jacfwd, vmap
 
 class MLP(Function_Approximator):
 
-    def __init__(self, features, widths, biases = False):
+    def __init__(self, features, widths, biases = False, activation='ReLU'):
 
         self.Phi = features
+        self.Phi_trans = jnp.array(np.transpose(self.Phi))
 
         self.input_dim = features.shape[1]
         self.depth = len(widths)
         self.widths = widths
         self.biases = biases
+        self.activation = activation
 
         assert self.depth >= 1
 
@@ -28,41 +30,52 @@ class MLP(Function_Approximator):
             for i in range(self.depth):
                 self.theta.append(np.zeros((widths[i], 1)))
 
+
+        # jit all the necessary functions
+        self.fast_jac = jit(jacfwd(self._full_forward))
+        self.fast_full_evaluate = jit(self._full_forward)
+
+        self.fast_grad = jit(grad(self._forward))
+        self.fast_evaluate = jit(self._forward)
+
+
     def _forward(self, theta, s):
 
         x = jnp.dot(theta[0],s)
         for i in range(self.depth):
             if self.biases:
                 x += theta[i + self.depth + 1]
-            x = jnp.maximum(x, 0.0)
+            if self.activation == 'ReLU':
+                x = jnp.maximum(x, 0.0)
+            elif self.activation == 'tanh':
+                x = jnp.tanh(x)
             x = jnp.dot(theta[i+1],x)
 
         return x[0]
 
+    def _full_forward(self, theta):
 
-    def _full_forward(self, theta, Phi):
-
-        x = jnp.dot(theta[0], jnp.transpose(Phi))
+        x = jnp.dot(theta[0], self.Phi_trans)
         for i in range(self.depth):
             if self.biases:
                 x = x + theta[i + self.depth + 1]
-            x = jnp.maximum(x, 0.0)
+            if self.activation == 'ReLU':
+                x = jnp.maximum(x, 0.0)
+            elif self.activation == 'tanh':
+                x = jnp.tanh(x)
             x = jnp.dot(theta[i+1],x)
         return x[0,:]
 
 
 
     def evaluate(self, s):
-        return self._forward(self.theta, self.Phi[s])
+        return self.fast_evaluate(self.theta, self.Phi[s])
 
     def full_evaluate(self):
-        return self._full_forward(self.theta, self.Phi)
+        return self.fast_full_evaluate(self.theta)
 
     def gradient(self, s):
-        g = grad(self._forward)
-        return g(self.theta, self.Phi[s])
+        return self.fast_grad(self.theta, self.Phi[s])
     
     def jacobian(self):
-        j = jacfwd(self._full_forward)
-        jac = j(self.theta, self.Phi)
-        return jac
+        return self.fast_jac(self.theta)
