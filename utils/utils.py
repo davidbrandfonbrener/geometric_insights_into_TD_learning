@@ -76,4 +76,13 @@ def compute_homogeneous_bound(P, mu, V_star, gamma):
     return np.sqrt(np.dot(R, np.dot(np.diag(mu), R))) / (1.0 - gamma)
 
 
+def dynamics_norm(V, Ak, V_star):
+    norm = 0
+    jac = V.jacobian()
+    for i in range(len(V.theta)):
+        JT = np.array(np.moveaxis(jac[i], 0, -1))
+        theta_dot = np.dot(JT, np.dot(Ak, V.full_evaluate() - V_star))
+        norm += np.sum(np.square(theta_dot))
+    return np.sqrt(norm)
+
 

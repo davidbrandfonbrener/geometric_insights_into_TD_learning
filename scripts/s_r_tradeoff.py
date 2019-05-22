@@ -47,7 +47,13 @@ def run_experiment(args):
     else:
         R_mat = np.zeros_like(P)
         R_mat[0, 1] = 1
-        env = environment.MRP(args.gamma, P, R_mat)
+        # env = environment.MRP(args.gamma, P, R_mat=R_mat)
+        
+        #fixed V_star
+        PV_star = P_matrices.build_cyclic_P(args.n, 0.5)
+        V_star = environment.MRP(args.gamma, PV_star, R_mat).V_star
+        env = environment.MRP(args.gamma, P, V_star=V_star)
+
     
 
     bound = utils.overparam_cond_number_bound(env.P, env.mu, env.gamma, args.k)
@@ -57,12 +63,13 @@ def run_experiment(args):
     Phi = np.concatenate([np.expand_dims(np.sin(angles), 1), np.expand_dims(np.cos(angles), 1), np.ones((args.n,1))], axis = 1) 
 
 
-    V = simple.Tabular(np.zeros(args.n))
-    if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
-    else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
-    tabular_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
+    # V = simple.Tabular(np.zeros(args.n))
+    # if args.online:
+    #     Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    # else:
+    #     thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    # tabular_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
+    tabular_Vs = []
 
 
     V = mlp.MLP(Phi, [args.width]*args.depth, biases = False)
@@ -79,12 +86,13 @@ def run_experiment(args):
         condition_numbers.append(utils.jac_cond(V.jacobian()))
     
 
-    V = simple.Linear(np.zeros(Phi.shape[1]), Phi)
-    if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
-    else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
-    linear_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
+    # V = simple.Linear(np.zeros(Phi.shape[1]), Phi)
+    # if args.online:
+    #     Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    # else:
+    #     thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    # linear_Vs = utils.dist_mu(env.mu, env.V_star, np.array(Vs))
+    linear_Vs = []
 
     smoothness = max([abs(env.V_star[i] - env.V_star[i-1]) for i in range(args.n)])
 
@@ -101,11 +109,12 @@ def main():
     print(args.online)
 
     #deltas = [.5, .4, .3, .27]
-    seeds = range(10)
+    seeds = range(30)
     
     t, l, m, c, b, s = [], [], [], [], [], []
     for seed in seeds:
-
+        print("Seed: ", seed)
+        print("--------------")
         args.seed = seed
         tabular_Vs, linear_Vs, mlp_Vs, condition_numbers, bound, smoothness = run_experiment(args)
         t.append(tabular_Vs)
@@ -122,7 +131,7 @@ def main():
     b = np.array(b)
     s = np.array(s)
 
-    np.savez(args.save_path  + "hard_" + str(args.hard) + "_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
+    np.savez(args.save_path  + "fixed_hard_" + str(args.hard) + "_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
             + "_width_" + str(args.width) + "_delta_" + str(args.delta) + "_online_" + str(args.online) + ".npz", 
             tabular_Vs = t, linear_Vs = l, mlp_Vs = m, condition_numbers = c, bound = b, seeds = seeds, smoothness= s)
 
