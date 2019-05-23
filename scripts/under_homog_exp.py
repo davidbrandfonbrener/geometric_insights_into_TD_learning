@@ -76,7 +76,7 @@ def run_experiment(args):
     dynamics = []
     for i in range(len(ts)):
         V.theta = ts[i]
-        dynamics.append(utils.dynamics_norm(V, env.A, env.V_star))
+        dynamics.append(utils.norm_dynamics(V, env.A, env.V_star))
     params = []
     for i in range(len(ts)):
         theta = np.concatenate([x.flatten() for x in ts[i]]).ravel()
@@ -97,7 +97,7 @@ def main():
     args = parse_args()
     print("online: ", args.online)
 
-    seeds = range(7,10)
+    seeds = range(7,9)
     
     tVs, td, tp, Vs, d, p, b= [], [], [], [], [], [], []
     for seed in seeds:
@@ -121,7 +121,7 @@ def main():
     p = np.array(p)
     b = np.array(b)
 
-    np.savez(args.save_path + "long2_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
+    np.savez(args.save_path + "long_longtest_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
             + "_width_" + str(args.width) + "_online_" + str(args.online) + ".npz", 
             tanh_mlp_Vs = tVs, tanh_dynamics = td, mlp_Vs = Vs, dynamics = d, bound = b, seeds= np.array(seeds),
             tanh_params = tp, params = p)

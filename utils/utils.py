@@ -86,3 +86,13 @@ def dynamics_norm(V, Ak, V_star):
     return np.sqrt(norm)
 
 
+def norm_dynamics(V, Ak, V_star):
+    norm_d = 0
+    jac = V.jacobian()
+    for i in range(len(V.theta)):
+        JT = np.array(np.moveaxis(jac[i], 0, -1))
+        theta_dot = np.dot(JT, np.dot(Ak, V.full_evaluate() - V_star))
+        norm_d += np.sum(np.dot(V.theta[i].flatten(), theta_dot.flatten()))
+    return 2 * norm_d
+
+
