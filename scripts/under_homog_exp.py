@@ -45,23 +45,24 @@ def run_experiment(args):
     Phi = np.concatenate([np.expand_dims(np.sin(angles), 1), np.expand_dims(np.cos(angles), 1), np.ones((args.n,1))], axis = 1) 
 
 
-    np.random.seed(args.seed)
-    V = mlp.MLP(Phi, [args.width]*args.depth, biases = False, activation='tanh')
-    if args.online:
-        Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
-    else:
-        thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
-    tanh_mlp_V_to_V_star = utils.dist_mu(env.mu, env.V_star, jnp.array(Vs))
+    # np.random.seed(args.seed)
+    # V = mlp.MLP(Phi, [args.width]*args.depth, biases = False, activation='tanh')
+    # if args.online:
+    #     Vs, thetas, _, _ = online_td0.TD0(V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    # else:
+    #     thetas, Vs = expected_tdk.TDk(args.k, V, env, args.stepsize, args.steps, args.log_idx, args.plot_step)
+    # tanh_mlp_V_to_V_star = utils.dist_mu(env.mu, env.V_star, jnp.array(Vs))
     
-    ts = thetas[args.plot_start::args.plot_step]
-    tanh_dynamics = []
-    for i in range(len(ts)):
-        V.theta = ts[i]
-        tanh_dynamics.append(utils.dynamics_norm(V, env.A, env.V_star))
-    tanh_params = []
-    for i in range(len(ts)):
-        theta = np.concatenate([x.flatten() for x in ts[i]]).ravel()
-        tanh_params.append(np.linalg.norm(theta))
+    # ts = thetas[args.plot_start::args.plot_step]
+    # tanh_dynamics = []
+    # for i in range(len(ts)):
+    #     V.theta = ts[i]
+    #     tanh_dynamics.append(utils.dynamics_norm(V, env.A, env.V_star))
+    # tanh_params = []
+    # for i in range(len(ts)):
+    #     theta = np.concatenate([x.flatten() for x in ts[i]]).ravel()
+    #     tanh_params.append(np.linalg.norm(theta))
+    tanh_params, tanh_dynamics, tanh_mlp_V_to_V_star = [],[],[]
 
     np.random.seed(args.seed)
     V = mlp.MLP(Phi, [args.width]*args.depth, biases = False, activation='ReLU')
@@ -96,11 +97,12 @@ def main():
     args = parse_args()
     print("online: ", args.online)
 
-    seeds = range(1,11)
+    seeds = range(7,10)
     
     tVs, td, tp, Vs, d, p, b= [], [], [], [], [], [], []
     for seed in seeds:
-
+        print("Seed: ", seed)
+        print("--------------")
         args.seed = seed
         tanh_mlp_Vs, tanh_dyn, tanh_par, mlp_Vs, dyn , par, bound = run_experiment(args)
         tVs.append(tanh_mlp_Vs)
@@ -119,7 +121,7 @@ def main():
     p = np.array(p)
     b = np.array(b)
 
-    np.savez(args.save_path + "long_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
+    np.savez(args.save_path + "long2_k_" + str(args.k) + "_n_" + str(args.n) + "_mlp_depth_" + str(args.depth) 
             + "_width_" + str(args.width) + "_online_" + str(args.online) + ".npz", 
             tanh_mlp_Vs = tVs, tanh_dynamics = td, mlp_Vs = Vs, dynamics = d, bound = b, seeds= np.array(seeds),
             tanh_params = tp, params = p)
